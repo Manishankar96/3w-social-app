@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import API from "./api";
 import { jwtDecode } from "jwt-decode";
 
-
 function Home() {
     const [posts, setPosts] = useState([]);
     const [commentText, setCommentText] = useState({});
@@ -14,9 +13,9 @@ function Home() {
     const fetchPosts = async () => {
         try {
             const response = await API.get("/posts");
-            setPosts(response.data);
+            setPosts(response);
         } catch (error) {
-            console.error("Failed to fetch posts", error);
+            console.error("Failed to fetch posts:", error);
         }
     };
 
@@ -24,9 +23,19 @@ function Home() {
         try {
             const token = localStorage.getItem("token");
 
-            await API.put(
+            if (!token) {
+                alert("Please login first");
+                return;
+            }
+
+            const decoded = jwtDecode(token);
+            const username = decoded.username;
+
+            const updatedPost = await API.put(
                 `/posts/${postId}/like`,
-                { username: jwtDecode(token).username },
+                {
+                    username: username
+                },
                 {
                     headers: {
                         Authorization: `Bearer ${token}`
@@ -34,21 +43,34 @@ function Home() {
                 }
             );
 
-            fetchPosts();
+            setPosts((currentPosts) =>
+                currentPosts.map((post) =>
+                    post._id === postId ? updatedPost : post
+                )
+            );
+
         } catch (error) {
-            console.error("Failed to like post", error);
+            console.error("Like error:", error);
+            alert(error.message || "Failed to like post");
         }
     };
 
     const addComment = async (postId) => {
         try {
             const token = localStorage.getItem("token");
-            const username = jwtDecode(token).username;
+
+            if (!token) {
+                alert("Please login first");
+                return;
+            }
+
+            const decoded = jwtDecode(token);
+            const username = decoded.username;
 
             await API.post(
                 `/posts/${postId}/comment`,
                 {
-                    username,
+                    username: username,
                     text: commentText[postId]
                 },
                 {
@@ -63,9 +85,11 @@ function Home() {
                 [postId]: ""
             });
 
-            fetchPosts();
+            await fetchPosts();
+
         } catch (error) {
-            console.error("Failed to add comment", error);
+            console.error("Comment error:", error);
+            alert(error.message || "Failed to add comment");
         }
     };
 
@@ -73,43 +97,50 @@ function Home() {
         <div>
             <h2>3W Social Feed</h2>
 
-            {posts.map((post) => (
-                <div key={post._id}>
-                    <h3>{post.username}</h3>
+            {posts.length === 0 ? (
+                <p>No posts yet.</p>
+            ) : (
+                posts.map((post) => (
+                    <div key={post._id}>
 
-                    <p>{post.text}</p>
+                        <h3>{post.username}</h3>
 
-                    <button onClick={() => likePost(post._id)}>
-                        ❤️ {post.likes.length}
-                    </button>
+                        <p>{post.text}</p>
 
-                    <h4>Comments</h4>
+                        <button onClick={() => likePost(post._id)}>
+                            ❤️ {post.likes ? post.likes.length : 0}
+                        </button>
 
-                    {post.comments.map((comment, index) => (
-                        <p key={index}>
-                            <b>{comment.username}:</b> {comment.text}
-                        </p>
-                    ))}
+                        <h4>Comments</h4>
 
-                    <input
-                        type="text"
-                        placeholder="Write a comment"
-                        value={commentText[post._id] || ""}
-                        onChange={(e) =>
-                            setCommentText({
-                                ...commentText,
-                                [post._id]: e.target.value
-                            })
-                        }
-                    />
+                        {post.comments &&
+                            post.comments.map((comment, index) => (
+                                <p key={index}>
+                                    <b>{comment.username}:</b> {comment.text}
+                                </p>
+                            ))}
 
-                    <button onClick={() => addComment(post._id)}>
-                        Comment
-                    </button>
+                        <input
+                            type="text"
+                            placeholder="Write a comment"
+                            value={commentText[post._id] || ""}
+                            onChange={(e) =>
+                                setCommentText({
+                                    ...commentText,
+                                    [post._id]: e.target.value
+                                })
+                            }
+                        />
 
-                    <hr />
-                </div>
-            ))}
+                        <button onClick={() => addComment(post._id)}>
+                            Comment
+                        </button>
+
+                        <hr />
+
+                    </div>
+                ))
+            )}
         </div>
     );
 }

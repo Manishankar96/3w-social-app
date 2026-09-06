@@ -14,14 +14,14 @@ function Login({ onLogin }) {
                 password
             });
 
-            localStorage.setItem("token", response.data.token);
+            localStorage.setItem("token", response.token);
 
             alert("Login successful!");
 
             onLogin();
 
         } catch (error) {
-            alert(error.response?.data?.message || "Login failed");
+            alert(error.message || "Login failed");
         }
     };
 

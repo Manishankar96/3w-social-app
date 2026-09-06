@@ -15,9 +15,9 @@ function Profile() {
                     }
                 });
 
-                setUser(response.data);
+                setUser(response);
             } catch (error) {
-                console.error("Failed to fetch profile", error);
+                console.error("Failed to fetch profile:", error);
             }
         };
 
